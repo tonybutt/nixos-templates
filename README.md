@@ -15,3 +15,21 @@ or with a directory you want to create
 ```shell
 nix flake new -t github:tonybutt/nixos-templates#go ./myApp
 ```
+
+## After init or new
+```shell
+git init
+# Nix is git aware so you need to stage files for nix to be able to see them.
+git add -A
+```
+If you are using direnv  
+```shell
+cd myApp
+direnv allow .
+```
+otherwise
+```shell
+nix develop
+# If not using bash use the below command to launch a development shell
+# nix develop -c $SHELL
+```
