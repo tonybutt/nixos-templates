@@ -1,11 +1,12 @@
 # Nix Flake Templates 
-For the common languages I write code in
+For the common languages and stacks I write code in
 
 ## Currently supported languages
-- golang
+- go
+- go-pulumi
 
 ## How to use (default is golang)
-Use #<languageName> at the end of the command to get different templates  
+Use #<TemplateName> at the end of the `nix flake init` command to get different templates  
 Current directory
 ```shell
 nix flake init -t github:tonybutt/nixos-templates#go
