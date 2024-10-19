@@ -37,34 +37,39 @@
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
             src = ./.;
             hooks = {
-              check-yaml.enable = true;
-              yamlfmt.enable = true;
+              yamlfmt = rec {
+                enable = true;
+                settings.configPath = "yamlfmt.yaml";
+                entry = "${pkgs.yamlfmt}/bin/yamlfmt -conf ${settings.configPath}";
+              };
               yamllint = {
                 enable = true;
-                entry = "yamllint . -c .yamllint";
-                pass_filenames = true;
+                settings.configPath = "yamllint.yaml";
               };
               gofmt.enable = true;
               gotest.enable = true;
-              govet.enable = true;
-              golangci-lint.enable = true;
+              golangci-lint = {
+                files = ".go$";
+                entry = "${pkgs.golangci-lint}/bin/golangci-lint run --new-from-rev HEAD --fix --timeout 5m";
+              };
               nixfmt-rfc-style.enable = true;
             };
           };
         }
       );
-      devShell = forAllSystems (
+      devShells = forAllSystems (
         { system, pkgs }:
-        pkgs.mkShell {
-          inherit (self.checks.${system}.pre-commit-check) shellHook;
-          buildInputs = with pkgs; [
-            go
-            gopls
-            gotools
-            pulumi-bin
-            pulumiPackages.pulumi-language-go
-            (self.checks.${system}.pre-commit-check.enabledPackages)
-          ];
+        {
+          default = pkgs.mkShell {
+            inherit (self.checks.${system}.pre-commit-check) shellHook;
+            buildInputs = with pkgs; [
+              go
+              gopls
+              gotools
+              pulumi-bin
+              self.checks.${system}.pre-commit-check.enabledPackages
+            ];
+          };
         }
       );
     };

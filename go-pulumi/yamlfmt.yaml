@@ -1,0 +1,8 @@
+---
+formatter:
+  type: basic
+  include_document_start: true
+gitignore_excludes: true
+exclude:
+  - Pulumi.*.yaml
+  - Pulumi.yaml

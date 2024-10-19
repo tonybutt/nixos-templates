@@ -1,1 +1,4 @@
+---
+# yamllint disable
 encryptionsalt: v1:0rFsvHDBI3U=:v1:fRTrn1gTrzO5cbMA:H9VGZGa79UY7ZlA2ZZi8901HRmPjuQ==
+# yamllint enable
