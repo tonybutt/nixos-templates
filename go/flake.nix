@@ -1,12 +1,8 @@
 {
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
-
-    gomod2nix = {
-      url = "github:nix-community/gomod2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     gitignore = {
       url = "github:hercules-ci/gitignore.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -17,73 +13,35 @@
     {
       self,
       nixpkgs,
-      gomod2nix,
+      systems,
+      treefmt-nix,
+      pre-commit-hooks,
       gitignore,
     }:
     let
-      lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
+      # lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
+      # version = builtins.substring 0 8 lastModifiedDate;
 
-      version = builtins.substring 0 8 lastModifiedDate;
-
-      allSystems = [
-        "x86_64-linux" # 64-bit Intel/AMD Linux
-        "aarch64-linux" # 64-bit ARM Linux
-        "x86_64-darwin" # 64-bit Intel macOS
-        "aarch64-darwin" # 64-bit ARM macOS
-      ];
-
-      forAllSystems =
-        f:
-        nixpkgs.lib.genAttrs allSystems (
-          system:
-          f {
-            inherit system;
-            pkgs = import nixpkgs { inherit system; };
-          }
-        );
+      forEachSystem =
+        f: nixpkgs.lib.genAttrs (import systems) (system: f nixpkgs.legacyPackages.${system});
+      treefmtEval = forEachSystem (pkgs: treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix);
     in
     {
-      packages = forAllSystems (
-        { system, pkgs, ... }:
-        let
-          buildGoApplication = gomod2nix.legacyPackages.${system}.buildGoApplication;
-        in
-        rec {
-          default = hello;
+      formatter = forEachSystem (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
+      checks = forEachSystem (pkgs: {
+        pre-commit-check = pkgs.callPackage ./nix/pre-commit.nix {
+          inherit pre-commit-hooks treefmtEval;
+        };
+      });
 
-          docker = pkgs.dockerTools.buildLayeredImage {
-            name = "registry.gamewarden.io/hello";
-            tag = "${version}";
-            contents = [ pkgs.cacert ];
-            config = {
-              Cmd = "${hello}/bin/hello";
-            };
-            created = "now";
-          };
-
-          hello = buildGoApplication {
-            name = "hello";
-            inherit version;
-            src = gitignore.lib.gitignoreSource ./.;
-            pwd = ./.;
-            CGO_ENABLED = 0;
-            ldflags = [
-              "-s"
-              "-w"
-              "-extldflags -static"
-            ];
-          };
-        }
-      );
-
-      devShell = forAllSystems (
-        { system, pkgs }:
+      devShell = forEachSystem (pkgs:
         pkgs.mkShell {
           buildInputs = with pkgs; [
             go
             gopls
             gotools
-            gomod2nix.legacyPackages.${system}.gomod2nix
+            (self.checks.${pkgs.system}.pre-commit-check.enabledPackages)
+            treefmtEval.${pkgs.system}.config.build.wrapper
           ];
         }
       );
