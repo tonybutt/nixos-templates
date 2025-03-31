@@ -1,12 +1,9 @@
 {
+  description = "Rust flake";
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    gitignore = {
-      url = "github:hercules-ci/gitignore.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -16,11 +13,9 @@
       systems,
       treefmt-nix,
       pre-commit-hooks,
+      ...
     }:
     let
-      # lastModifiedDate = self.lastModifiedDate or self.lastModified or "19700101";
-      # version = builtins.substring 0 8 lastModifiedDate;
-
       forEachSystem =
         f: nixpkgs.lib.genAttrs (import systems) (system: f nixpkgs.legacyPackages.${system});
       treefmtEval = forEachSystem (pkgs: treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix);
@@ -32,25 +27,17 @@
           inherit pre-commit-hooks treefmtEval;
         };
       });
-
-      devShell = forEachSystem (
-        pkgs:
-        pkgs.mkShell {
+      devShells = forEachSystem (pkgs: {
+        default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            go
-            gopls
-            gotools
+            rustc
+            cargo
+            rust-analyzer
+            gcc
             (self.checks.${pkgs.system}.pre-commit-check.enabledPackages)
             treefmtEval.${pkgs.system}.config.build.wrapper
           ];
-        }
-      );
-
-      # Example usage:
-      #
-      # nixpkgs.overlays = [
-      #   inputs.hello.overlays.default
-      # ];
-      overlays.default = final: _prev: { hello = self.packages.${final.stdenv.system}.wrap; };
+        };
+      });
     };
 }
